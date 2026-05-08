@@ -49,7 +49,6 @@ processed_data/
 *.tar.gz
 
 outputs/
-results/
 predictions/
 generated/
 plots/
