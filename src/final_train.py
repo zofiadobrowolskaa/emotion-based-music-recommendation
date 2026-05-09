@@ -20,6 +20,9 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.callbacks import (EarlyStopping, ModelCheckpoint)
 
 
+from sklearn.utils.class_weight import compute_class_weight
+import numpy as np
+
 def build_final_model(input_shape, num_classes):
 
     # load pre-trained mobilenetv2 with weights from imagenet
@@ -179,6 +182,43 @@ if __name__ == "__main__":
         7
     )
 
+
+
+    # =========================
+    # compute class weights
+    # =========================
+
+    # calculate balanced class weights based on
+    # the number of samples in each emotion class
+    #
+    # classes with fewer images receive higher weights,
+    # which helps reduce dataset imbalance during training
+    #
+    # example:
+    # if "happy" has many samples and "fear" has few,
+    # the model will pay more attention to "fear"
+    class_weights = compute_class_weight(
+        
+        # automatically compute inverse-frequency weights
+        class_weight='balanced',
+        
+        # list of unique class labels
+        classes=np.unique(train_generator.classes),
+        
+        # actual class labels for all training images
+        y=train_generator.classes
+    )
+
+    # convert weights array into dictionary format
+    # required by tensorflow model.fit(class_weight=...)
+    #
+    # example output:
+    # {0: 1.2, 1: 0.8, 2: 1.5, ...}
+    weight_dict = dict(enumerate(class_weights))
+
+    # display computed weights in console
+    print(f"applied class weights: {weight_dict}")
+
     # train model
 
     history = model.fit(
@@ -193,6 +233,8 @@ if __name__ == "__main__":
 
         # training callbacks
         callbacks=callbacks,
+
+        class_weight=weight_dict,
 
         # display detailed training logs
         verbose=1
