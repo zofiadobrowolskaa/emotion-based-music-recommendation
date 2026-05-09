@@ -1,62 +1,137 @@
 import streamlit as st
+import cv2
+import numpy as np
+import pandas as pd
 from PIL import Image
+from mtcnn import MTCNN
+from tensorflow.keras.models import load_model
 
-# streamlit page configuration
 st.set_page_config(page_title="Emotion Music Recommender", layout="wide")
 
+EMOTION_CLASSES = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
 
-st.title("Emotion-Based Music Recommendation System 🎵 ")
+# cache ai models so they are loaded only once
+@st.cache_resource
+def load_ai_models():
+    # load mtcnn for face detection (cached to save ram and time)
+    detector = MTCNN()
+    # load final trained mobilenetv2 model
+    emotion_model = load_model("../models/final_emotion_model.h5")
+    return detector, emotion_model
+
+# load models into memory
+detector, emotion_model = load_ai_models()
+
+def process_and_predict(image_pil):
+    # convert pil image to numpy array in rgb format
+    img_array = np.array(image_pil)
+    
+    # detect faces using mtcnn
+    faces = detector.detect_faces(img_array)
+    
+    if not faces:
+        return None, None, "No face detected in the image. Please try another one."
+        
+    # assume the first detected face is the primary one
+    x, y, w, h = faces[0]['box']
+    
+    # ensure bounding box coordinates are strictly positive
+    x, y = max(0, x), max(0, y)
+    
+    # crop the face and resize to match model input (48x48)
+    cropped_face = img_array[y:y+h, x:x+w]
+    resized_face = cv2.resize(cropped_face, (48, 48))
+    
+    # normalize exactly like in training phase (rescale 1./255)
+    normalized_face = resized_face.astype('float32') / 255.0
+    
+    # expand dimensions to match batch format (1, 48, 48, 3)
+    input_tensor = np.expand_dims(normalized_face, axis=0)
+    
+    # 1. get raw predictions from the model
+    raw_predictions = emotion_model.predict(input_tensor)[0]
+    
+    # 2. apply heuristic prior adjustment to fix dataset bias and mtcnn cropping differences
+    calibration_weights = np.array([
+        1.2,  # Angry
+        4.0,  # Disgust
+        3.5,  # Fear
+        0.7,  # Happy
+        2.0,  # Neutral
+        1.2,  # Sad
+        3.0   # Surprise
+    ])
+    
+    # apply weights
+    calibrated_predictions = raw_predictions * calibration_weights
+    
+    # 3. re-normalize so probabilities sum back to 1.0 (100%)
+    final_predictions = calibrated_predictions / np.sum(calibrated_predictions)
+    
+    return cropped_face, final_predictions, None
+
+st.title("Emotion-Based Music Recommendation 🎵")
 st.markdown("---")
 
-# layout with two columns
 col1, col2 = st.columns([1, 1])
 
 with col1:
-
     st.header("Input Image 📸")
-
+    
     input_mode = st.radio("Choose input source:", ["Upload Image", "Live Camera"])
-
-    # remains None until user provides image
+    
     image = None
-
+    
     if input_mode == "Upload Image":
-        # file uploader for local files
         uploaded_file = st.file_uploader("Select a photo from your device...", type=["jpg", "jpeg", "png"])
-
+        
         if uploaded_file:
-            # open uploaded image using pillow
-            image = Image.open(uploaded_file)
-
+            image = Image.open(uploaded_file).convert('RGB')
     else:
-        # camera input for real-time photos
         camera_photo = st.camera_input("Take a picture of your face")
-
+        
         if camera_photo:
-            # convert captured image into pillow object
-            image = Image.open(camera_photo)
+            image = Image.open(camera_photo).convert('RGB')
 
-    # display image if provided
     if image:
         st.image(image, caption="Selected Image for Analysis", width='stretch')
 
 with col2:
-
     st.header("Analysis & Recommendations 📊")
-
+    
     if image:
-        # container for future emotion detection results
         st.subheader("Detected Emotion")
-        st.info("The model analysis will be displayed here in Step 3.")
         
-        # progress bar placeholder for probabilities
-        st.markdown("**Probability Distribution:**")
-        st.progress(0)
-        
-        # container for future music recommendations
-        st.markdown("---")
-        st.subheader("Music Recommendation")
-        st.info("Music suggestions based on your mood will appear here in Step 4.")
+        with st.spinner('Analyzing face geometry and emotions...'):
+            cropped_face, probabilities, error_msg = process_and_predict(image)
+            
+        if error_msg:
+            st.error(error_msg)
+        else:
+            # display nicely cropped face
+            st.image(cropped_face, caption="Extracted Face", width=150)
+            
+            # find the index of the highest probability
+            dominant_index = np.argmax(probabilities)
+            dominant_emotion = EMOTION_CLASSES[dominant_index]
+            
+            st.success(f"Dominant Emotion: **{dominant_emotion}**")
+            
+            # generate dynamic bar chart using pandas dataframe
+            st.markdown("**Probability Distribution:**")
+            prob_df = pd.DataFrame({
+                "Emotion": EMOTION_CLASSES,
+                "Probability (%)": probabilities * 100
+            }).set_index("Emotion")
+            
+            # render interactive bar chart
+            st.bar_chart(prob_df)
+            
+            # store dominant emotion in session state for spotify integration
+            st.session_state['dominant_emotion'] = dominant_emotion.lower()
+            
+            st.markdown("---")
+            st.subheader("Music Recommendation")
+            st.info(f"Music suggestions matching '{dominant_emotion}' will appear here in Step 4.")
     else:
-        # feedback for empty state
         st.warning("Please provide an image using the controls on the left to start.")
