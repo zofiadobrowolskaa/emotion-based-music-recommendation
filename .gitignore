@@ -1,5 +1,6 @@
 articles/
 data/
+results_custom_dataset/
 
 __pycache__/
 *.py[cod]
