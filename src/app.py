@@ -79,13 +79,13 @@ def process_and_predict(image_pil):
     
     # 2. apply heuristic prior adjustment to fix dataset bias and mtcnn cropping differences
     calibration_weights = np.array([
-        1.2,  # Angry
-        4.0,  # Disgust
-        3.5,  # Fear
-        0.7,  # Happy
-        2.0,  # Neutral
-        1.2,  # Sad
-        3.0   # Surprise
+        2.5,  # Angry
+        1.5,  # Disgust
+        3.0,  # Fear
+        0.8,  # Happy
+        1.0,  # Neutral
+        2.5,  # Sad
+        2.5   # Surprise
     ])
     
     # apply weights
