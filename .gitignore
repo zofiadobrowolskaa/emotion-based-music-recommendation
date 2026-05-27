@@ -1,6 +1,6 @@
 articles/
 data/
-results_custom_dataset/
+old_results/
 src/.cache
 
 __pycache__/
