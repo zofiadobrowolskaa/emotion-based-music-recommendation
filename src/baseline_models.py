@@ -7,6 +7,9 @@ import pandas as pd
 # train-test split utility from sklearn
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 
+# shared utility for saving metrics across all scripts
+from save_metrics import save_metrics
+
 # simple baseline models used for comparison
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -163,6 +166,9 @@ if __name__ == "__main__":
         'CV Std': round(cv_std_knn, 4)
     })
 
+    save_metrics("kNN (k=3)", "custom_aug", acc_knn, f1_knn,
+                 notes=f"CV={cv_mean_knn:.4f}±{cv_std_knn:.4f}")
+
     # ==============================
     # model 2: decision tree
     # ==============================
@@ -186,6 +192,9 @@ if __name__ == "__main__":
         'CV Mean Accuracy': round(cv_mean_dt, 4),
         'CV Std': round(cv_std_dt, 4)
     })
+
+    save_metrics("Decision Tree", "custom_aug", acc_dt, f1_dt,
+                 notes=f"CV={cv_mean_dt:.4f}±{cv_std_dt:.4f}")
 
     # ==============================
     # model 3: naive bayes
@@ -212,6 +221,9 @@ if __name__ == "__main__":
         'CV Mean Accuracy': round(cv_mean_nb, 4),
         'CV Std': round(cv_std_nb, 4)
     })
+
+    save_metrics("Naive Bayes (GaussianNB)", "custom_aug", acc_nb, f1_nb,
+                 notes=f"CV={cv_mean_nb:.4f}±{cv_std_nb:.4f}")
 
     # ==============================
     # save summary table to csv

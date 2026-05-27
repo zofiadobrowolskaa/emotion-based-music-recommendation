@@ -38,7 +38,8 @@ def plot_class_distribution(base_path, title_suffix="", filename="class_distribu
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 
     # bar chart of absolute counts
-    sns.barplot(x=emotions, y=counts, palette="viridis", ax=axes[0])
+    # hue=emotions + legend=False is the new seaborn API for per-bar coloring
+    sns.barplot(x=emotions, y=counts, hue=emotions, palette="viridis", legend=False, ax=axes[0])
     axes[0].set_title(f"Class Distribution {title_suffix} (absolute count)", fontsize=13)
     axes[0].set_xlabel("Emotion", fontsize=11)
     axes[0].set_ylabel("Number of Images", fontsize=11)

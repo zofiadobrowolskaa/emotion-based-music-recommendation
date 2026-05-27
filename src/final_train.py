@@ -24,6 +24,9 @@ from tensorflow.keras.callbacks import (EarlyStopping, ModelCheckpoint)
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import classification_report, confusion_matrix
 
+# shared utility for saving metrics across all scripts
+from save_metrics import save_metrics
+
 
 def plot_learning_curves(history, results_dir):
     # plot accuracy and loss curves for the final production model
@@ -83,12 +86,32 @@ def evaluate_final_model(model, validation_generator, class_names, results_dir):
     y_pred = np.array(y_pred)
 
     print("\nFinal model - classification report:")
+
+    report = classification_report(
+        y_true,
+        y_pred,
+        target_names=class_names,
+        zero_division=0,
+        output_dict=True
+    )
+
     print(classification_report(
         y_true,
         y_pred,
         target_names=class_names,
         zero_division=0
     ))
+
+    # save metrics for final production model to shared metrics file
+    save_metrics(
+        model_name="MobileNetV2 (Final, FER-2013)",
+        dataset="FER-2013",
+        accuracy=report['accuracy'],
+        macro_f1=report['macro avg']['f1-score'],
+        macro_precision=report['macro avg']['precision'],
+        macro_recall=report['macro avg']['recall'],
+        notes="frozen backbone, class weights, early stopping, 50 epochs max"
+    )
 
     # build confusion matrix
     cm = confusion_matrix(y_true, y_pred)
