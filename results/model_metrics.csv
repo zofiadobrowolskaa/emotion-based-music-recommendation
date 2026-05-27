@@ -1,0 +1,11 @@
+model_name,dataset,accuracy,macro_f1,macro_precision,macro_recall,notes,timestamp
+kNN (k=3),custom_aug,0.4643,0.5119,,,CV=0.5643±0.0827,2026-05-27 14:47
+Decision Tree,custom_aug,0.4643,0.4354,,,CV=0.4214±0.0614,2026-05-27 14:47
+Naive Bayes (GaussianNB),custom_aug,0.7143,0.6971,,,CV=0.6500±0.0795,2026-05-27 14:47
+MLP Shallow,custom_aug,0.5357,0.5238,0.544,0.5357,,2026-05-27 14:51
+MLP Deep,custom_aug,0.4286,0.3797,0.348,0.4286,,2026-05-27 14:51
+MLP Tanh,custom_aug,0.3929,0.3029,0.2568,0.3929,,2026-05-27 14:51
+Custom CNN,custom_aug,0.6786,0.6745,0.7976,0.6684,"3 conv blocks, dropout=0.5",2026-05-27 15:00
+"MobileNetV2 (Transfer Learning, exp)",custom_aug,0.6429,0.6464,0.7183,0.6602,"frozen backbone, custom head, ImageNet weights",2026-05-27 15:01
+Vision Transformer (ViT),custom_aug,0.1786,0.1468,0.3265,0.1918,"custom mini-ViT, 2 transformer blocks, patch_size=8",2026-05-27 15:05
+"MobileNetV2 (Final, FER-2013)",FER-2013,0.3738,0.3261,0.3284,0.3599,"frozen backbone, class weights, early stopping, 50 epochs max",2026-05-27 15:21

@@ -1,0 +1,4 @@
+Model,Test Accuracy,Macro F1,CV Mean Accuracy,CV Std
+kNN (k=3),0.4643,0.5119,0.5643,0.0827
+Decision Tree,0.4643,0.4354,0.4214,0.0614
+Naive Bayes,0.7143,0.6971,0.65,0.0795
