@@ -1,7 +1,7 @@
 model_name,dataset,accuracy,macro_f1,macro_precision,macro_recall,notes,timestamp
-kNN (k=3),custom_aug,0.4643,0.5119,,,CV=0.5643±0.0827,2026-05-27 14:47
-Decision Tree,custom_aug,0.4643,0.4354,,,CV=0.4214±0.0614,2026-05-27 14:47
-Naive Bayes (GaussianNB),custom_aug,0.7143,0.6971,,,CV=0.6500±0.0795,2026-05-27 14:47
+kNN (k=3),custom_aug,0.4643,0.5119,,,CV=0.5643ï¿½0.0827,2026-05-27 14:47
+Decision Tree,custom_aug,0.4643,0.4354,,,CV=0.4214ï¿½0.0614,2026-05-27 14:47
+Naive Bayes (GaussianNB),custom_aug,0.7143,0.6971,,,CV=0.6500ï¿½0.0795,2026-05-27 14:47
 MLP Shallow,custom_aug,0.5357,0.5238,0.544,0.5357,,2026-05-27 14:51
 MLP Deep,custom_aug,0.4286,0.3797,0.348,0.4286,,2026-05-27 14:51
 MLP Tanh,custom_aug,0.3929,0.3029,0.2568,0.3929,,2026-05-27 14:51
@@ -9,3 +9,7 @@ Custom CNN,custom_aug,0.6786,0.6745,0.7976,0.6684,"3 conv blocks, dropout=0.5",2
 "MobileNetV2 (Transfer Learning, exp)",custom_aug,0.6429,0.6464,0.7183,0.6602,"frozen backbone, custom head, ImageNet weights",2026-05-27 15:01
 Vision Transformer (ViT),custom_aug,0.1786,0.1468,0.3265,0.1918,"custom mini-ViT, 2 transformer blocks, patch_size=8",2026-05-27 15:05
 "MobileNetV2 (Final, FER-2013)",FER-2013,0.3738,0.3261,0.3284,0.3599,"frozen backbone, class weights, early stopping, 50 epochs max",2026-05-27 15:21
+MobileNetV2 aggregated (valence_pos_neg),FER-2013,0.6447,0.6367,0.6443,0.6375,post-hoc 2-class aggregation of 7-class model; balanced_acc=0.6375,2026-06-09 13:13
+MobileNetV2 aggregated (happy_vs_rest),FER-2013,0.7246,0.651,0.645,0.6616,post-hoc 2-class aggregation of 7-class model; balanced_acc=0.6616,2026-06-09 13:13
+MobileNetV2 aggregated (arousal_high_low),FER-2013,0.6436,0.6061,0.609,0.6045,post-hoc 2-class aggregation of 7-class model; balanced_acc=0.6045,2026-06-09 13:13
+"MobileNetV2 (Binary Valence, FER-2013)",FER-2013,0.6588,0.6515,0.6589,0.6519,"trained directly on 2-class valence labels (pos/neg); frozen backbone, class weights",2026-06-09 13:40
