@@ -1,0 +1,29 @@
+# core numerical / data
+numpy
+pandas
+scipy
+
+# deep learning
+tensorflow>=2.11
+
+# classical ML, metrics, cross-validation
+scikit-learn
+
+# association rule mining (Apriori)
+mlxtend
+
+# image processing & face detection
+opencv-python
+mtcnn
+Pillow
+
+# visualisation
+matplotlib
+seaborn
+
+# web application
+streamlit
+
+# music recommendation
+spotipy
+python-dotenv
