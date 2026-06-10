@@ -3,6 +3,8 @@ data/
 old_results/
 src/.cache
 
+REPORT_PL.md
+
 __pycache__/
 *.py[cod]
 *$py.class
