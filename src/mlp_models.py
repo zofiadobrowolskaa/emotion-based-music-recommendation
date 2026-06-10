@@ -6,6 +6,9 @@ import seaborn as sns
 # train-test split utility from sklearn
 from sklearn.model_selection import train_test_split
 
+# shared utility for saving metrics across all scripts
+from save_metrics import save_metrics
+
 # evaluation metrics for classification tasks
 from sklearn.metrics import classification_report, confusion_matrix
 
@@ -13,6 +16,37 @@ from sklearn.metrics import classification_report, confusion_matrix
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten, Dropout
 from tensorflow.keras.optimizers import Adam
+
+
+def plot_mlp_learning_curves(histories, names, results_dir):
+    # plot accuracy and loss curves for all mlp experiments on a single figure
+    # this allows visual comparison of architectures at a glance
+
+    fig, axes = plt.subplots(len(histories), 2, figsize=(14, 4 * len(histories)))
+
+    for i, (history, name) in enumerate(zip(histories, names)):
+
+        # accuracy subplot for this experiment
+        axes[i, 0].plot(history.history['accuracy'], label='train accuracy')
+        axes[i, 0].plot(history.history['val_accuracy'], label='val accuracy')
+        axes[i, 0].set_title(f'{name} - Accuracy')
+        axes[i, 0].set_xlabel('Epoch')
+        axes[i, 0].set_ylabel('Accuracy')
+        axes[i, 0].legend()
+
+        # loss subplot for this experiment
+        axes[i, 1].plot(history.history['loss'], label='train loss')
+        axes[i, 1].plot(history.history['val_loss'], label='val loss')
+        axes[i, 1].set_title(f'{name} - Loss')
+        axes[i, 1].set_xlabel('Epoch')
+        axes[i, 1].set_ylabel('Loss')
+        axes[i, 1].legend()
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(results_dir, 'mlp_learning_curves.png'), dpi=150)
+
+    plt.close()
 
 
 def evaluate_nn_model(model, x_test, y_test, classes, model_name, results_dir):
@@ -27,13 +61,29 @@ def evaluate_nn_model(model, x_test, y_test, classes, model_name, results_dir):
     print(f"\n{model_name} evaluation")
 
     # generate detailed classification metrics for each class: precision, recall, f1-score
-    print(
-        classification_report(
-            y_test,
-            y_pred,
-            target_names=classes,
-            zero_division=0
-        )
+    report = classification_report(
+        y_test,
+        y_pred,
+        target_names=classes,
+        zero_division=0,
+        output_dict=True
+    )
+
+    print(classification_report(
+        y_test,
+        y_pred,
+        target_names=classes,
+        zero_division=0
+    ))
+
+    # save metrics to shared CSV for report generation
+    save_metrics(
+        model_name=model_name,
+        dataset="custom_aug",
+        accuracy=report['accuracy'],
+        macro_f1=report['macro avg']['f1-score'],
+        macro_precision=report['macro avg']['precision'],
+        macro_recall=report['macro avg']['recall']
     )
 
     cm = confusion_matrix(y_test, y_pred)
@@ -53,13 +103,14 @@ def evaluate_nn_model(model, x_test, y_test, classes, model_name, results_dir):
     plt.title(f'Confusion matrix - {model_name}')
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
+    plt.tight_layout()
 
     plot_path = os.path.join(
         results_dir,
         f'cm_{model_name.replace(" ", "_").lower()}.png'
     )
 
-    plt.savefig(plot_path)
+    plt.savefig(plot_path, dpi=150)
 
     plt.close()
 
@@ -129,21 +180,26 @@ if __name__ == "__main__":
     input_shape = x_data.shape[1:]
 
     # split dataset into training and testing subsets
-    # 80% training, 20% testing
+    # 80% training, 20% testing, stratified to preserve class proportions
     x_train, x_test, y_train, y_test = train_test_split(
         x_data,
         y_data,
         test_size=0.2,
-        random_state=42  # ensures reproducible results
+        random_state=42,     # ensures reproducible results
+        stratify=y_data      # preserve class balance in train and test sets
     )
 
     epochs = 15
     batch_size = 16
 
+    # store training histories for combined learning curve plot
+    histories = []
+    names = []
+
     # experiment 1: shallow mlp
     print("\nTraining experiment 1: shallow mlp")
 
-    # single hidden layer network
+    # single hidden layer network - simplest possible dense architecture
     mlp_1 = create_mlp(
         input_shape,
         num_classes,
@@ -151,8 +207,8 @@ if __name__ == "__main__":
         activation='relu'
     )
 
-    # train model
-    mlp_1.fit(
+    # train model and collect history for learning curve
+    hist_1 = mlp_1.fit(
         x_train,
         y_train,
         epochs=epochs,
@@ -161,12 +217,15 @@ if __name__ == "__main__":
         verbose=1
     )
 
+    histories.append(hist_1)
+    names.append("MLP Shallow (128)")
+
     evaluate_nn_model(mlp_1, x_test, y_test, classes, "MLP Shallow", results_dir)
 
     # experiment 2: deep mlp + dropout
     print("\nTraining experiment 2: deep mlp with dropout")
 
-    # deeper architecture with regularization
+    # deeper architecture with regularization to reduce overfitting
     mlp_2 = create_mlp(
         input_shape,
         num_classes,
@@ -175,7 +234,7 @@ if __name__ == "__main__":
         dropout_rate=0.3
     )
 
-    mlp_2.fit(
+    hist_2 = mlp_2.fit(
         x_train,
         y_train,
         epochs=epochs,
@@ -184,12 +243,16 @@ if __name__ == "__main__":
         verbose=1
     )
 
+    histories.append(hist_2)
+    names.append("MLP Deep + Dropout (256→128)")
+
     evaluate_nn_model(mlp_2, x_test, y_test, classes, "MLP Deep", results_dir)
 
-    # experiment 3: deep mlp with tanh
+    # experiment 3: deep mlp with tanh activation
     print("\nTraining experiment 3: deep mlp with tanh activation")
 
-    # same architecture but different activation function
+    # same architecture as exp 2, but uses tanh instead of relu
+    # tanh outputs are in range (-1, 1), which can help in some datasets
     mlp_3 = create_mlp(
         input_shape,
         num_classes,
@@ -198,7 +261,7 @@ if __name__ == "__main__":
         dropout_rate=0.3
     )
 
-    mlp_3.fit(
+    hist_3 = mlp_3.fit(
         x_train,
         y_train,
         epochs=epochs,
@@ -207,6 +270,12 @@ if __name__ == "__main__":
         verbose=1
     )
 
+    histories.append(hist_3)
+    names.append("MLP Deep + Tanh (256→128)")
+
     evaluate_nn_model(mlp_3, x_test, y_test, classes, "MLP Tanh", results_dir)
 
-    print(f"\nAll mlp experiments completed. Check {results_dir} for confusion matrices.")
+    # save all learning curves in a single comparison figure
+    plot_mlp_learning_curves(histories, names, results_dir)
+
+    print(f"\nAll mlp experiments completed. Check {results_dir} for confusion matrices and learning curves.")

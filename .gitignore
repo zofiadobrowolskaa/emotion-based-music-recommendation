@@ -1,7 +1,9 @@
 articles/
 data/
-results_custom_dataset/
+old_results/
 src/.cache
+
+REPORT_PL.md
 
 __pycache__/
 *.py[cod]

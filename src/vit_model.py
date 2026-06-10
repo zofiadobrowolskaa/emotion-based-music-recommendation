@@ -7,6 +7,9 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
 
+# shared utility for saving metrics across all scripts
+from save_metrics import save_metrics
+
 # keras functional API components
 from tensorflow.keras import layers, models
 from tensorflow.keras.optimizers import Adam
@@ -64,13 +67,30 @@ def evaluate_vit(model, x_test, y_test, classes, results_dir):
     print("\nVision Transformer (Vit) evaluation")
 
     # generate detailed classification metrics for each class: precision, recall, f1-score
-    print(
-        classification_report(
-            y_test,
-            y_pred,
-            target_names=classes,
-            zero_division=0
-        )
+    report = classification_report(
+        y_test,
+        y_pred,
+        target_names=classes,
+        zero_division=0,
+        output_dict=True
+    )
+
+    print(classification_report(
+        y_test,
+        y_pred,
+        target_names=classes,
+        zero_division=0
+    ))
+
+    # save metrics to shared CSV for report generation
+    save_metrics(
+        model_name="Vision Transformer (ViT)",
+        dataset="custom_aug",
+        accuracy=report['accuracy'],
+        macro_f1=report['macro avg']['f1-score'],
+        macro_precision=report['macro avg']['precision'],
+        macro_recall=report['macro avg']['recall'],
+        notes="custom mini-ViT, 2 transformer blocks, patch_size=8"
     )
 
     cm = confusion_matrix(y_test, y_pred)

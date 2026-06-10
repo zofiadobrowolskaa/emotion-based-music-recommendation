@@ -6,6 +6,9 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
 
+# shared utility for saving metrics across all scripts
+from save_metrics import save_metrics
+
 # pretrained model for transfer learning
 from tensorflow.keras.applications import MobileNetV2
 
@@ -69,13 +72,30 @@ def evaluate_tl_model(model, x_test, y_test, classes, results_dir):
     print("\nTransfer learning evaluation")
 
     # generate detailed classification metrics for each class: precision, recall, f1-score
-    print(
-        classification_report(
-            y_test,
-            y_pred,
-            target_names=classes,
-            zero_division=0
-        )
+    report = classification_report(
+        y_test,
+        y_pred,
+        target_names=classes,
+        zero_division=0,
+        output_dict=True
+    )
+
+    print(classification_report(
+        y_test,
+        y_pred,
+        target_names=classes,
+        zero_division=0
+    ))
+
+    # save metrics to shared CSV for report generation
+    save_metrics(
+        model_name="MobileNetV2 (Transfer Learning, exp)",
+        dataset="custom_aug",
+        accuracy=report['accuracy'],
+        macro_f1=report['macro avg']['f1-score'],
+        macro_precision=report['macro avg']['precision'],
+        macro_recall=report['macro avg']['recall'],
+        notes="frozen backbone, custom head, ImageNet weights"
     )
 
     cm = confusion_matrix(y_test, y_pred)

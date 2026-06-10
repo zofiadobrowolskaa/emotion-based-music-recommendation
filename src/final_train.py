@@ -1,5 +1,7 @@
 import os
+import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 # import pre-trained mobilenetv2 architecture
 from tensorflow.keras.applications import MobileNetV2
@@ -19,9 +21,122 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 # callbacks for better training control
 from tensorflow.keras.callbacks import (EarlyStopping, ModelCheckpoint)
 
-
 from sklearn.utils.class_weight import compute_class_weight
-import numpy as np
+from sklearn.metrics import classification_report, confusion_matrix
+
+# shared utility for saving metrics across all scripts
+from save_metrics import save_metrics
+
+
+def plot_learning_curves(history, results_dir):
+    # plot accuracy and loss curves for the final production model
+
+    plt.figure(figsize=(12, 4))
+
+    # accuracy subplot
+    plt.subplot(1, 2, 1)
+    plt.plot(history.history['accuracy'], label='train accuracy')
+    plt.plot(history.history['val_accuracy'], label='val accuracy')
+    plt.title('Final Model (MobileNetV2) - Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend()
+
+    # loss subplot
+    plt.subplot(1, 2, 2)
+    plt.plot(history.history['loss'], label='train loss')
+    plt.plot(history.history['val_loss'], label='val loss')
+    plt.title('Final Model (MobileNetV2) - Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, 'final_model_learning_curves.png'), dpi=150)
+    plt.close()
+
+    print(f"Learning curves saved to {results_dir}/final_model_learning_curves.png")
+
+
+def evaluate_final_model(model, validation_generator, class_names, results_dir):
+    # run full evaluation on the validation set and save confusion matrix + metrics
+
+    print("\nEvaluating final model on validation set...")
+
+    # gather all predictions and true labels from the generator
+    y_true = []
+    y_pred = []
+
+    # reset generator to start from the beginning
+    validation_generator.reset()
+
+    for i in range(len(validation_generator)):
+        x_batch, y_batch = next(validation_generator)
+
+        # predict class probabilities for this batch
+        preds = model.predict(x_batch, verbose=0)
+
+        # argmax gives the predicted class index
+        y_pred.extend(np.argmax(preds, axis=1))
+
+        # argmax also needed for one-hot encoded labels from flow_from_directory
+        y_true.extend(np.argmax(y_batch, axis=1))
+
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    print("\nFinal model - classification report:")
+
+    report = classification_report(
+        y_true,
+        y_pred,
+        target_names=class_names,
+        zero_division=0,
+        output_dict=True
+    )
+
+    print(classification_report(
+        y_true,
+        y_pred,
+        target_names=class_names,
+        zero_division=0
+    ))
+
+    # save metrics for final production model to shared metrics file
+    save_metrics(
+        model_name="MobileNetV2 (Final, FER-2013)",
+        dataset="FER-2013",
+        accuracy=report['accuracy'],
+        macro_f1=report['macro avg']['f1-score'],
+        macro_precision=report['macro avg']['precision'],
+        macro_recall=report['macro avg']['recall'],
+        notes="frozen backbone, class weights, early stopping, 50 epochs max"
+    )
+
+    # build confusion matrix
+    cm = confusion_matrix(y_true, y_pred)
+
+    plt.figure(figsize=(9, 7))
+
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt='d',
+        cmap='Blues',
+        xticklabels=class_names,
+        yticklabels=class_names
+    )
+
+    plt.title('Confusion Matrix - Final Model (MobileNetV2 Transfer Learning)')
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(results_dir, 'cm_final_model.png'), dpi=150)
+    plt.close()
+
+    print(f"Confusion matrix saved to {results_dir}/cm_final_model.png")
+
 
 def build_final_model(input_shape, num_classes):
 
@@ -39,7 +154,7 @@ def build_final_model(input_shape, num_classes):
     # build custom classification head
     model = Sequential([
 
-        base_model, # feature extractor
+        base_model,  # feature extractor
 
         # converts feature maps into compact vector
         # much lighter than flattening entire tensor
@@ -54,7 +169,6 @@ def build_final_model(input_shape, num_classes):
         # final classification layer, one neuron per emotion class
         Dense(num_classes, activation='softmax')
     ])
-
 
     model.compile(
 
@@ -76,8 +190,10 @@ if __name__ == "__main__":
     test_dir = "../data/fer2013/test"
 
     model_save_path = "../models/final_emotion_model.h5"
+    results_dir = "../results"
 
     os.makedirs("../models", exist_ok=True)
+    os.makedirs(results_dir, exist_ok=True)
 
     # training data augmentation
 
@@ -147,8 +263,19 @@ if __name__ == "__main__":
         batch_size=64,
 
         # one-hot encoded labels
-        class_mode='categorical'
+        class_mode='categorical',
+
+        # disable shuffling for consistent evaluation order
+        shuffle=False
     )
+
+    # extract class names sorted by their integer index (as assigned by flow_from_directory)
+    class_names = [
+        name for name, _ in
+        sorted(train_generator.class_indices.items(), key=lambda x: x[1])
+    ]
+
+    print(f"Detected classes: {class_names}")
 
     # callbacks configuration
 
@@ -182,8 +309,6 @@ if __name__ == "__main__":
         7
     )
 
-
-
     # =========================
     # compute class weights
     # =========================
@@ -198,13 +323,13 @@ if __name__ == "__main__":
     # if "happy" has many samples and "fear" has few,
     # the model will pay more attention to "fear"
     class_weights = compute_class_weight(
-        
+
         # automatically compute inverse-frequency weights
         class_weight='balanced',
-        
+
         # list of unique class labels
         classes=np.unique(train_generator.classes),
-        
+
         # actual class labels for all training images
         y=train_generator.classes
     )
@@ -239,5 +364,11 @@ if __name__ == "__main__":
         # display detailed training logs
         verbose=1
     )
+
+    # save learning curves for the report
+    plot_learning_curves(history, results_dir)
+
+    # evaluate and save confusion matrix
+    evaluate_final_model(model, validation_generator, class_names, results_dir)
 
     print(f"Final model saved successfully at: {model_save_path}")
